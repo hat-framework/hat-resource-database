@@ -15,7 +15,7 @@
     ],
     "autoload": {
         "psr-0": {
-            "resource\database\\": "src/"
+            "resource\\database\\": "src/"
         }
     }
 }
