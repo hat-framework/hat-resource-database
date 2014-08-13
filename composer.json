@@ -1,0 +1,21 @@
+{
+    "name": "hatframework/resources/database",
+    "type": "library",
+    "description": "",
+    "keywords": [],
+    "homepage": "https://github.com/hat-framework/resources/database",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Thompson Filgueiras",
+            "email": "thom@hat-framework.org",
+            "homepage": "http://hat-framework.org",
+            "role": "Developer"
+        }
+    ],
+    "autoload": {
+        "psr-0": {
+            "resource\database\\": "src/"
+        }
+    }
+}
