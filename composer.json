@@ -1,9 +1,9 @@
 {
-    "name": "hatframework/resources/database",
+    "name": "hatframework/hat-resource-database",
     "type": "library",
     "description": "",
     "keywords": [],
-    "homepage": "https://github.com/hat-framework/resources/database",
+    "homepage": "https://github.com/hat-framework/hat-resource-database",
     "license": "MIT",
     "authors": [
         {
