@@ -231,7 +231,7 @@ class creatorResource extends \classes\Interfaces\resource{
            return false;
        }
        
-       $file = MODULOS . $plugin;
+       $file = \classes\Classes\Registered::getPluginLocation($plugin,true);
        if(!file_exists($file)){
            $this->setErrorMessage("plugin $plugin não existe");
            return false;
@@ -246,7 +246,7 @@ class creatorResource extends \classes\Interfaces\resource{
        
        $out    = array();
        foreach($subplugins as $splug){
-          $models = $this->objdir->getArquivos(MODULOS."$plugin/$splug/classes/");
+          $models = $this->objdir->getArquivos(\classes\Classes\Registered::getPluginLocation($plugin,true)."/$splug/classes/");
           
           foreach($models as $model){
              $model = str_replace("Model.php", "", $model);
