@@ -196,14 +196,16 @@ class creatorResource extends \classes\Interfaces\resource{
                         $this->foreign($name, $tabela, $arr, $model);
                 }
             }
-            $str .= $this->obj->updateSubPlugin($tabela, $dados);
+            $tmp = $this->obj->updateSubPlugin($tabela, $dados);
+            if(trim($tmp) === ""){continue;}
+            $str .= $tmp;
+            //echoBr($str);
         }
         $str .= $this->genFkeys();
         return $this->execute($str, false);
     }
 
     private function execute($str, $show_empty_error = true){
-
        if(trim($str) == ""){
             if($show_empty_error){
                 $this->setErrorMessage("Caro usuário, a string de criação do banco de dados está vazia. Método: ".__METHOD__);
@@ -212,15 +214,16 @@ class creatorResource extends \classes\Interfaces\resource{
             return true;
        }
        $this->db->setErrorMessage("");
-       $this->db->ExecuteInsertionQuery($str);
+       $boolean = $this->db->ExecuteInsertionQuery($str);
        $erro = trim($this->db->getErrorMessage());
        if($erro != ""){
             $str = "<h5>$erro</h5>";
             $str.= "<p>".$this->getAlertMessage()."</p>";
             $this->warning[] = $str;
-            //$this->debug($str);
+            $this->debug($str);
             return false;
        }
+       die("$str");
        return true;
        
     }

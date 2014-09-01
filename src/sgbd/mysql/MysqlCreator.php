@@ -93,9 +93,9 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
         if($type != "timestamp"){
             $str .= ($notnull)? " NOT NULL ": " DEFAULT NULL ";
         }
-        $v = $this->virg. $str;
+        $v = "$this->virg$str";
         $this->virg = ", ";
-        return $v;
+        return trim($v);
     }
     
     private function getPkeys($tabela){
@@ -218,8 +218,7 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
             $ai      = (array_key_exists("ai"     , $arr) && $arr['ai']      == true);
             $default = (array_key_exists("default", $arr)? $arr['default']:"");
             $this->memory[$tabela]['timestamp'] = false;
-            $row = $this->addRow($tabela, $name, $type, $pkey, $notnull, $ai, $keys, $size, $default, $index, $unique);
-            $row[strlen($row)-2] = ";";
+            $row = $this->addRow($tabela, $name, $type, $pkey, $notnull, $ai, $keys, $size, $default, $index, $unique).";";
             $sentenca .= "ALTER TABLE `$tabela` ADD $row";
         }
         $this->ignore_instaled = false;
