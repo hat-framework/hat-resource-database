@@ -223,7 +223,7 @@ class creatorResource extends \classes\Interfaces\resource{
             $this->debug($str);
             return false;
        }
-       die("$str");
+       //die("$str");
        return true;
        
     }
