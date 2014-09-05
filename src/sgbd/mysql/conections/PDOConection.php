@@ -45,7 +45,11 @@ class PDOConection extends classes\Classes\Object implements DBConectionInterfac
         if(!is_object($bd)){throw new \classes\Exceptions\DBException(__CLASS__ . ": Erro na conexão do banco de dados");}
         $q = $bd->prepare($query);
         $this->status = $q->execute();
-        if($fetch){return($q->fetchAll(PDO::FETCH_ASSOC));}
+        //echo("$query\n"); 
+        if($fetch){
+            return($q->fetchAll(PDO::FETCH_ASSOC));
+        }
+
         return $this->status;
     }
     

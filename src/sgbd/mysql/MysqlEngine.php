@@ -327,4 +327,3 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     }
 
 }
-?>
