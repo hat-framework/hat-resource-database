@@ -9,7 +9,6 @@ class creatorResource extends \classes\Interfaces\resource{
     private $fkeys = array();
     private $fks = "";
     private $str = "";
-
     //guarda os nomes dos plugins com dependência externa
     private $dext  = array();
 
@@ -51,6 +50,16 @@ class creatorResource extends \classes\Interfaces\resource{
         return call_user_func($class ."::getInstanceOf");
     }
     
+    /**
+     * 
+    * @abstract Reset Creator Variables
+     * @autor Thom <thom@hat-framework.com>
+     */
+    public function reset(){
+        $this->fkeys = array();
+        $this->str   = '';
+        $this->fks   = '';
+    }
     
    /**
     * @abstract Loader da classe
@@ -121,7 +130,7 @@ class creatorResource extends \classes\Interfaces\resource{
                //$this->unstall($plugin);
            }
        }
-
+       $this->reset();
        return $bool;
     }
 
@@ -180,13 +189,12 @@ class creatorResource extends \classes\Interfaces\resource{
        
         $this->plugin = $plugin;
         $subplugins   = $this->getPlugin($plugin);
-        $str          = "";
-        $this->obj->destroyFkeys($plugin);
+        $str          = $this->obj->destroyFkeys($plugin);
         foreach($subplugins as $model => $d){
             $modelname = "$plugin/$model";
             $this->LoadModel($modelname, 'tmp_model', false);
-            if(!is_object($this->tmp_model)) continue;
-            if(!method_exists($this->tmp_model, "getDados")) continue;
+            if(!is_object($this->tmp_model)) {continue;}
+            if(!method_exists($this->tmp_model, "getDados")){continue;}
             
             $dados = $this->tmp_model->getDados();
             $tabela = $this->tmp_model->getTable();
@@ -201,17 +209,21 @@ class creatorResource extends \classes\Interfaces\resource{
             }
             
             foreach($dados as $name => $arr){
-                if(array_key_exists('fkey', $arr))
+                if(array_key_exists('fkey', $arr)){
                     $this->foreign($name, $tabela, $arr, $model);
+                }
             }
             
             $tmp = $this->obj->updateSubPlugin($tabela, $dados);
             if(trim($tmp) === ""){continue;}
             $str .= $tmp;
-            //echoBr($str);
         }
-        $str .= $this->genFkeys();
-        return $this->execute($str, false);
+        
+        $bool  = true;
+        $fkeys = $this->genFkeys();
+        if(trim($str)   !== ""){$bool = $bool and $this->execute($str  , false);}
+        if(trim($fkeys) !== ""){$bool = $bool and $this->execute($fkeys, false);}
+        return $bool;
     }
 
     private function execute($str, $show_empty_error = true){
@@ -229,7 +241,7 @@ class creatorResource extends \classes\Interfaces\resource{
             $str .= "<h5>$erro</h5>";
             $str .= "<p>".$this->getAlertMessage()."</p>";
             $this->warning[] = $str;
-            $this->debug($str); die();
+            $this->debug($str); //die();
             return false;
        }
        //die("$str");
@@ -375,6 +387,7 @@ class creatorResource extends \classes\Interfaces\resource{
     }
     
     private function debug($str){
+        $log = "";
         //echo "<hr/>Sentença executada pelo banco de dados: <br/>".$this->db->getSentenca(). "<hr/>";
         //echo "Debug da Sentença: <br/>";
         $var = explode(";", $str);
@@ -389,14 +402,17 @@ class creatorResource extends \classes\Interfaces\resource{
             $linha = explode(", ", $v);
             $virg = "";
 
-            echo "$prim (";
+            $log .= "$prim (";
             foreach($linha as $l){
-                if($l != "")echo "$virg <br/>$l";
+                if($l != ""){
+                    $log .= "$virg <br/>$l";
+                }
                 $virg = ",";
             }
-            echo ")<br/>$ult;<br/><br/> ";
+            $log .= ")<br/>$ult;<br/><br/> ";
         }
-        echo "<hr/>";
+        $log .= "<hr/>";
+        \classes\Utils\Log::save('plugins/erro', $log);
         //die();
     }
 }

@@ -170,6 +170,7 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
             ALTER TABLE `$tname`
             DROP FOREIGN KEY `$cname`; ";
         }
+        //echoHr($temp);
         return $temp;
     }
     
@@ -189,7 +190,9 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
             
             //verifica as colunas removidas
             if(!array_key_exists($v['coluna'], $dados)){
-                $sentenca .= "ALTER TABLE `$tabela` DROP `".$v['coluna']."`; ";
+                $temp      = "ALTER TABLE `$tabela` DROP `".$v['coluna']."`; ";
+                $sentenca .= $temp;
+                //echoBr("$temp<hr/>");
             }
         } 
         
@@ -198,7 +201,7 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
         foreach($dados as $name => $arr){
             if(array_key_exists($name, $installed)) continue;
             if(array_key_exists('fkey', $arr)){
-                if(in_array($arr['fkey']['cardinalidade'], array('nn','n1'))) continue;
+                if(!isset($arr['fkey']['cardinalidade']) || in_array($arr['fkey']['cardinalidade'], array('nn','n1'))) {continue;}
             }
             
             if(!array_key_exists('type', $arr)) continue;
@@ -219,7 +222,8 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
             $default = (array_key_exists("default", $arr)? $arr['default']:"");
             $this->memory[$tabela]['timestamp'] = false;
             $row = $this->addRow($tabela, $name, $type, $pkey, $notnull, $ai, $keys, $size, $default, $index, $unique).";";
-            $sentenca .= "ALTER TABLE `$tabela` ADD $row";
+            $r   = str_replace(",", '', $row);
+            $sentenca .= "ALTER TABLE `$tabela` ADD $r";
         }
         $this->ignore_instaled = false;
         return $sentenca;
