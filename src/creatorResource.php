@@ -190,12 +190,21 @@ class creatorResource extends \classes\Interfaces\resource{
             
             $dados = $this->tmp_model->getDados();
             $tabela = $this->tmp_model->getTable();
-            if(!empty($dados)){
-                foreach($dados as $name => $arr){
-                    if(array_key_exists('fkey', $arr))
-                        $this->foreign($name, $tabela, $arr, $model);
-                }
+            if($tabela === ""){
+                $this->appendAlertMessage("O model $modelname não possui uma tabela!");
+                continue;
             }
+            
+            if(empty($dados)){
+                $this->appendAlertMessage("O model $modelname não possui dados!");
+                continue;
+            }
+            
+            foreach($dados as $name => $arr){
+                if(array_key_exists('fkey', $arr))
+                    $this->foreign($name, $tabela, $arr, $model);
+            }
+            
             $tmp = $this->obj->updateSubPlugin($tabela, $dados);
             if(trim($tmp) === ""){continue;}
             $str .= $tmp;
@@ -217,10 +226,10 @@ class creatorResource extends \classes\Interfaces\resource{
        $boolean = $this->db->ExecuteInsertionQuery($str);
        $erro = trim($this->db->getErrorMessage());
        if($erro != ""){
-            $str = "<h5>$erro</h5>";
-            $str.= "<p>".$this->getAlertMessage()."</p>";
+            $str .= "<h5>$erro</h5>";
+            $str .= "<p>".$this->getAlertMessage()."</p>";
             $this->warning[] = $str;
-            $this->debug($str);
+            $this->debug($str); die();
             return false;
        }
        //die("$str");
@@ -388,6 +397,6 @@ class creatorResource extends \classes\Interfaces\resource{
             echo ")<br/>$ult;<br/><br/> ";
         }
         echo "<hr/>";
-        die();
+        //die();
     }
 }
