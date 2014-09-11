@@ -15,6 +15,18 @@ class PDOConection extends classes\Classes\Object implements DBConectionInterfac
         }
     }
     
+    public function getDbName(){
+        return $this->bd_name;
+    }
+    
+    public function getDbServer(){
+        return $this->bd_server;
+    }
+    
+    public function getDbUser(){
+        return $this->bd_user;
+    }
+    
     private $pdo = NULL;
     public function connect(){
        $charset = defined("CHARSET")?CHARSET:'utf8';

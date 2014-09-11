@@ -18,7 +18,7 @@ class reimportResource extends \classes\Interfaces\resource{
         if(false === $this->unzipp("$folder.zip")){return false;}
         if(false === $this->reimport($folder)){return false;}
         $this->removeFiles($folder);
-        return true;
+        return $this->setSuccessMessage("Dados Importados Corretamente!");
     }
     
     /**

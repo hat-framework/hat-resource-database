@@ -26,7 +26,6 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     //guarda a instancia atual do banco de dados
     static private $instance;
     public function __construct($bd_server = "", $bd_name = "", $bd_user = "", $bd_password = ""){
-        
         $this->dir = dirname(__FILE__);
         $this->engine = bd_engine;
         if(!$this->connect($bd_server, $bd_name, $bd_user, $bd_password)){
@@ -69,8 +68,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
      * operacoes da interface
      */
 
-    public function Insert($table, array $dados)
-    {
+    public function Insert($table, array $dados){
         $campos = array();
         if(empty ($dados)){
             $this->setErrorMessage( __CLASS__ .": Dados não enviados ao inserir no banco de dados");
@@ -324,6 +322,100 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
         $function  = "f$erro";
         $error_obj = new $class();
         return (method_exists($error_obj, $function))?$error_obj->$function($msg):$error_obj->getMessage($msg);
+    }
+    
+    public function importDataFromArray($dados, $tabela, $callback = null, $insertIgnore = false, $callbackArgs = array()){
+        if(empty($dados)){
+            $this->setAlertMessage("Dados a serem importados estão vazios");
+            return true;
+        }
+        $keys   = array_keys($dados[key($dados)]);
+        $cols   = implode(",",$keys);
+        $dados  = array_values($dados);
+        $page   = -1; 
+        $max    = (int)count($dados);
+        $len    = 2000;
+        $ttpags = ceil($max/$len);
+        $update = $this->getOnUpdateStatement($keys);
+        
+        $fn     = $this->callback();
+        $fn_data= $this->getData($tabela);
+        
+        while($ttpags > $page++){
+            $init   = $page*$len;
+            $val    = array_slice($dados, $init, $len);
+            if($callback !== null){
+                array_walk($val,$callback, array('dados' =>$callbackArgs, 'total' => count($keys)));
+            }
+            array_walk($val,$fn, array('dados'=>$fn_data));
+            if(empty($val)){continue;}
+            $values = implode(",\n", $val);
+            $SQL = ($insertIgnore)?
+                    "insert ignore into $tabela  ($cols) values \n $values \n":
+                    "insert into $tabela  ($cols) values \n $values \n on duplicate key update $update";
+            $query = "SET foreign_key_checks = 0; $SQL; SET foreign_key_checks = 1;";
+            if(false === $this->ExecuteInsertionQuery($query)){return false;}
+        }
+        return true;
+    }
+    
+    private function getOnUpdateStatement($keys){
+        $out = array();
+        foreach($keys as &$k){
+            $out[] = "$k=values($k)";
+        }
+        return implode(",", $out);
+    }
+    
+    private function callback(){
+        return function(&$array, $key, $user_data){
+            $dados = $user_data['dados'];
+            if(empty($dados) || empty($array)){
+                $array = '';
+                return;
+            }
+            $temp  = array();
+            foreach($dados as $k => $validation){
+                if(!isset($array[$k]) || trim($array[$k]) === ""){
+                    $temp[$k] = (true === $validation['is_nullable'])?"NULL":"''";
+                    continue;
+                }
+                
+                $array[$k] = str_replace(array("'"), array('"'), $array[$k]);
+                if(is_numeric($array[$k])){
+                      $temp[$k] = $array[$k];
+                }else{$temp[$k] = "'{$array[$k]}'";}
+            }
+            $array = ("(". implode(",", $temp).")");
+        };
+    }
+    
+    private function getData($table){    
+        $arr2 = $this->getCols($table);
+        $out  = array();
+        foreach($arr2 as $key => $col){
+            $out[$key] = $col; 
+        }
+        return $out;
+    }
+    
+    private function getCols($table){
+        $dbname = $this->conn->getDbName();
+        $sql = " 
+            SELECT COLUMN_NAME as coluna, IS_NULLABLE as is_nullable
+            FROM `information_schema`.`COLUMNS` 
+            WHERE 
+                TABLE_SCHEMA='$dbname' AND
+                TABLE_NAME='$table'
+            ";
+        $arr = $this->ExecuteQuery($sql);
+        if(empty($arr)){return $arr;}
+        $out = array();
+        foreach($arr as $a){
+            $a['is_nullable'] = ($a['is_nullable'] === "NO")?false:true;
+            $out[$a['coluna']] = $a;
+        }
+        return $out;
     }
 
 }

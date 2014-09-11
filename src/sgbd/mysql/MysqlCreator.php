@@ -28,7 +28,7 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
 
     public function setPlugin($plugin){
         $sql = "SELECT TABLE_NAME as tabela
-        FROM  `TABLES`
+        FROM  `information_schema`.`TABLES`
         WHERE `TABLE_NAME` LIKE '{$plugin}%' AND
        `TABLE_SCHEMA` = '$this->bdname'";
         $var = $this->infoe->ExecuteQuery($sql);
@@ -119,7 +119,7 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
         $constraint = "$table_src-$table_dst-$name";
         if(strlen($constraint) > 64) $constraint = substr($constraint, 0, 64);  
         $sql = "SELECT  TABLE_NAME as tname
-                FROM  `TABLE_CONSTRAINTS`
+                FROM  `information_schema`.`TABLE_CONSTRAINTS`
                 WHERE  CONSTRAINT_NAME = '$constraint'
                 AND TABLE_SCHEMA = '$this->bdname'";
         $var = $this->infoe->ExecuteQuery($sql);
@@ -144,7 +144,7 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
     public function destroyPlugin($plugin){
         $temp = $this->destroyFkeys($plugin);
         $sql = "SELECT TABLE_NAME as tabela 
-        FROM  `TABLES` 
+        FROM  `information_schema`.`TABLES` 
         WHERE `TABLE_NAME` LIKE '".$plugin."%' AND
        `TABLE_SCHEMA` = '$this->bdname'";
         
@@ -158,7 +158,7 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
     
     public function destroyFkeys($plugin){
         $sql = "SELECT CONSTRAINT_NAME as cname, TABLE_NAME as tname
-                FROM  `TABLE_CONSTRAINTS` 
+                FROM  `information_schema`.`TABLE_CONSTRAINTS` 
                 WHERE  TABLE_NAME LIKE '".$plugin."%'
                 AND CONSTRAINT_TYPE = 'FOREIGN KEY'
                 AND TABLE_SCHEMA = '$this->bdname'";
@@ -177,7 +177,7 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
     public function updateSubPlugin($tabela, $dados){
         $this->ignore_instaled = true;
         $sql = "SELECT COLUMN_NAME as coluna
-                FROM  `COLUMNS` 
+                FROM  `information_schema`.`COLUMNS` 
                 WHERE TABLE_SCHEMA = '$this->bdname'
                 AND TABLE_NAME =  '$tabela'";
         $var = $this->infoe->ExecuteQuery($sql);
@@ -233,7 +233,7 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
 
         $sql = "
         SELECT COLUMN_NAME as coluna, DATA_TYPE as tipo, COLUMN_TYPE as size, COLUMN_KEY as pkey
-        FROM  `COLUMNS` 
+        FROM  `information_schema`.`COLUMNS` 
         WHERE TABLE_NAME = '$tabela' AND
         EXTRA != 'auto_increment' AND
         TABLE_SCHEMA = '$this->bdname'";
@@ -249,7 +249,7 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
 
         $sql = "
         SELECT TABLE_NAME as tname, COLUMN_NAME as tcol, REFERENCED_TABLE_NAME as tref, REFERENCED_COLUMN_NAME as colref
-        FROM  `REFERENTIAL_CONSTRAINTS` rc
+        FROM  `information_schema`.`REFERENTIAL_CONSTRAINTS` rc
         NATURAL JOIN KEY_COLUMN_USAGE ku
         NATURAL JOIN TABLE_CONSTRAINTS tc
         WHERE CONSTRAINT_TYPE = 'FOREIGN KEY'
@@ -335,4 +335,3 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
     }
 
 }
-?>
