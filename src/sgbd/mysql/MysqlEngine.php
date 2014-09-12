@@ -326,35 +326,40 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     
     public function importDataFromArray($dados, $tabela, $callback = null, $insertIgnore = false, $callbackArgs = array()){
         if(empty($dados)){
+            \classes\Utils\Log::save('log_import_data_from_array', "dados vazios $tabela");
             $this->setAlertMessage("Dados a serem importados estão vazios");
             return true;
         }
-        $keys   = array_keys($dados[key($dados)]);
-        $cols   = implode(",",$keys);
         $dados  = array_values($dados);
         $page   = -1; 
         $max    = (int)count($dados);
         $len    = 2000;
         $ttpags = ceil($max/$len);
-        $update = $this->getOnUpdateStatement($keys);
         
         $fn     = $this->callback();
         $fn_data= $this->getData($tabela);
+        $keys   = array_keys($fn_data);
+        $cols   = implode(",", $keys);
+        $update = $this->getOnUpdateStatement($keys);
         
+        $cbk_data = array('dados' =>$callbackArgs, 'total' => count($keys));
         while($ttpags > $page++){
             $init   = $page*$len;
             $val    = array_slice($dados, $init, $len);
             if($callback !== null){
-                array_walk($val,$callback, array('dados' =>$callbackArgs, 'total' => count($keys)));
+                array_walk($val,$callback, $cbk_data);
             }
-            array_walk($val,$fn, array('dados'=>$fn_data));
+            array_walk($val,$fn, array('dados'=>$fn_data, 'total' => count($keys)));
             if(empty($val)){continue;}
             $values = implode(",\n", $val);
             $SQL = ($insertIgnore)?
                     "insert ignore into $tabela  ($cols) values \n $values \n":
                     "insert into $tabela  ($cols) values \n $values \n on duplicate key update $update";
             $query = "SET foreign_key_checks = 0; $SQL; SET foreign_key_checks = 1;";
-            if(false === $this->ExecuteInsertionQuery($query)){return false;}
+            if(false === $this->ExecuteInsertionQuery($query)){
+                \classes\Utils\Log::save('logs/importDataFromArray', $this->getMessages());
+                return false;
+            }
         }
         return true;
     }
@@ -370,6 +375,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     private function callback(){
         return function(&$array, $key, $user_data){
             $dados = $user_data['dados'];
+            $count = $user_data['total'];
             if(empty($dados) || empty($array)){
                 $array = '';
                 return;
@@ -377,6 +383,12 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
             $temp  = array();
             foreach($dados as $k => $validation){
                 if(!isset($array[$k]) || trim($array[$k]) === ""){
+                    if($validation['extra'] !== ""){
+                        if(strstr($validation['extra'],'auto_increment')){
+                            $temp[$k] = "NULL";
+                        }
+                        continue;
+                    }
                     $temp[$k] = (true === $validation['is_nullable'])?"NULL":"''";
                     continue;
                 }
@@ -385,6 +397,9 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
                 if(is_numeric($array[$k])){
                       $temp[$k] = $array[$k];
                 }else{$temp[$k] = "'{$array[$k]}'";}
+            }
+            if($count !== count($temp)){
+                die("falha catastrófica: ImportDataFromArray número incorreto de keys!($count - ".count($temp).")");
             }
             $array = ("(". implode(",", $temp).")");
         };
@@ -402,7 +417,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     private function getCols($table){
         $dbname = $this->conn->getDbName();
         $sql = " 
-            SELECT COLUMN_NAME as coluna, IS_NULLABLE as is_nullable
+            SELECT COLUMN_NAME as coluna, IS_NULLABLE as is_nullable, EXTRA as extra
             FROM `information_schema`.`COLUMNS` 
             WHERE 
                 TABLE_SCHEMA='$dbname' AND
