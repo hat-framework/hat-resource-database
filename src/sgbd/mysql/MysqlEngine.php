@@ -384,7 +384,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
             foreach($dados as $k => $validation){
                 if(!isset($array[$k]) || trim($array[$k]) === ""){
                     if($validation['extra'] !== ""){
-                        if(strstr($validation['extra'],'auto_increment')){
+                        if(strstr($validation['extra'],'auto_increment')  || stristr($validation['extra'],'timestamp')){
                             $temp[$k] = "NULL";
                         }
                         continue;
