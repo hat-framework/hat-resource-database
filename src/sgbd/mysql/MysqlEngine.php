@@ -383,6 +383,10 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
             $temp  = array();
             foreach($dados as $k => $validation){
                 if(!isset($array[$k]) || trim($array[$k]) === ""){
+                    if(trim($validation['tipo']) == 'timestamp'){
+                        $temp[$k] = "CURRENT_TIMESTAMP";
+                        continue;
+                    }
                     if($validation['extra'] !== ""){
                         if(strstr($validation['extra'],'auto_increment')  || stristr($validation['extra'],'timestamp')){
                             $temp[$k] = "NULL";
@@ -417,7 +421,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     private function getCols($table){
         $dbname = $this->conn->getDbName();
         $sql = " 
-            SELECT COLUMN_NAME as coluna, IS_NULLABLE as is_nullable, EXTRA as extra
+            SELECT COLUMN_NAME as coluna, IS_NULLABLE as is_nullable, EXTRA as extra, DATA_TYPE as tipo
             FROM `information_schema`.`COLUMNS` 
             WHERE 
                 TABLE_SCHEMA='$dbname' AND
