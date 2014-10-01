@@ -337,7 +337,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
         $ttpags = ceil($max/$len);
         
         $fn     = $this->callback();
-        $fn_data= $this->getData($tabela);
+        $fn_data= $this->getData($tabela, $dados[0]);
         $keys   = array_keys($fn_data);
         $cols   = implode(",", $keys);
         $update = $this->getOnUpdateStatement($keys);
@@ -367,7 +367,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     private function getOnUpdateStatement($keys){
         $out = array();
         foreach($keys as &$k){
-            $out[] = "$k=values($k)";
+            $out[] = "$k=COALESCE( VALUES($k), $k)";
         }
         return implode(",", $out);
     }
@@ -409,10 +409,11 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
         };
     }
     
-    private function getData($table){    
+    private function getData($table, $data){    
         $arr2 = $this->getCols($table);
         $out  = array();
         foreach($arr2 as $key => $col){
+            if(!array_key_exists($key, $data)){continue;}
             $out[$key] = $col; 
         }
         return $out;
