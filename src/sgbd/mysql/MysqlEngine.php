@@ -339,7 +339,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
         $fn     = $this->callback();
         $fn_data= $this->getData($tabela, $dados[0]);
         $keys   = array_keys($fn_data);
-        $cols   = implode(",", $keys);
+        $cols   = implode("`,`", $keys);
         $update = $this->getOnUpdateStatement($keys);
         
         $cbk_data = array('dados' =>$callbackArgs, 'total' => count($keys));
@@ -353,8 +353,8 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
             if(empty($val)){continue;}
             $values = implode(",\n", $val);
             $SQL = ($insertIgnore)?
-                    "insert ignore into $tabela  ($cols) values \n $values \n":
-                    "insert into $tabela  ($cols) values \n $values \n on duplicate key update $update";
+                    "insert ignore into $tabela  (`$cols`) values \n $values \n":
+                    "insert into $tabela  (`$cols`) values \n $values \n on duplicate key update $update";
             $query = "SET foreign_key_checks = 0; $SQL; SET foreign_key_checks = 1;";
             if(false === $this->ExecuteInsertionQuery($query)){
                 \classes\Utils\Log::save('logs/importDataFromArray', $this->getMessages());
@@ -367,7 +367,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     private function getOnUpdateStatement($keys){
         $out = array();
         foreach($keys as &$k){
-            $out[] = "$k=COALESCE( VALUES($k), $k)";
+            $out[] = "`$k`=COALESCE( VALUES(`$k`), `$k`)";
         }
         return implode(",", $out);
     }
