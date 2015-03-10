@@ -250,14 +250,30 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
         }
     }
     
+    public function printSentenca(){
+        try{
+            if(usuario_loginModel::IsWebmaster()){
+                $this->doPrint();
+            }
+        }catch(Exception $e){
+            $this->doPrint();
+        }
+        
+    }
+            private function doPrint(){
+                echo "<div style='border:1px solid #A00000;'>";
+                echo $this->getFormatedSentenca();
+                echo "</div>";
+            }
+    
     public function getSentenca(){
         return $this->sentenca;
     }
     
     public function getFormatedSentenca(){
         return str_replace(
-            array("FROM", "LEFT JOIN", "WHERE", "AND", "ORDER", "LIMIT", "OFFSET"), 
-            array("<br/><b>FROM</b>", "<br/><b>LEFT JOIN</b>", "<br/><b>WHERE</b>", "<b>AND</b><br/>", "<br/><b>ORDER</b>", "<br/><b>LIMIT</b>", "<br/><b>OFFSET</b>"), 
+            array("SELECT","FROM", "LEFT JOIN", "WHERE", "AND", "ORDER", "LIMIT", "OFFSET"), 
+            array("<b>SELECT</b>","<br/><b>FROM</b>", "<br/><b>LEFT JOIN</b>", "<br/><b>WHERE</b>", "<b>AND</b><br/>", "<br/><b>ORDER</b>", "<br/><b>LIMIT</b>", "<br/><b>OFFSET</b>"), 
             $this->getSentenca());
     }
     
