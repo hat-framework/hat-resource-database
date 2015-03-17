@@ -135,6 +135,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
         }
         if($conditions != "") $conditions = "ON ($conditions)";
         $this->join .= "$side JOIN $table_dst $conditions";
+        return "$side JOIN $table_dst $conditions";
     }
 
     public function Read($table, $campos = NULL, $where = NULL, $limit = NULL, $offset = NULL, $orderby = NULL){
