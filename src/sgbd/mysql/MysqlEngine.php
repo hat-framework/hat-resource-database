@@ -273,8 +273,8 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     
     public function getFormatedSentenca(){
         return str_replace(
-            array("SELECT","FROM", "LEFT JOIN", "WHERE", "AND", "ORDER", "LIMIT", "OFFSET"), 
-            array("<b>SELECT</b>","<br/><b>FROM</b>", "<br/><b>LEFT JOIN</b>", "<br/><b>WHERE</b>", "<b>AND</b><br/>", "<br/><b>ORDER</b>", "<br/><b>LIMIT</b>", "<br/><b>OFFSET</b>"), 
+            array(",","SELECT","FROM", "LEFT JOIN", "WHERE", "ORDER BY", "AND", " OR ", "IN", "LIMIT", "OFFSET"), 
+            array(",<br/>","<b>SELECT</b><br/>","<br/><b>FROM</b>", "<br/><b>LEFT JOIN</b>", "<br/><b>WHERE</b><br/>", "<br/><b>ORDER  BY</b>", "<b>AND</b><br/>", " <b>OR</b> <br/>", "<b>IN</b>", "<br/><b>LIMIT</b>", "<br/><b>OFFSET</b>"), 
             $this->getSentenca());
     }
     
