@@ -253,7 +253,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     
     public function printSentenca(){
         try{
-            if(usuario_loginModel::IsWebmaster()){
+            if(!class_exists('usuario_loginModel', false) || usuario_loginModel::IsWebmaster()){
                 $this->doPrint();
             }
         }catch(Exception $e){
