@@ -15,22 +15,7 @@ class creatorResource extends \classes\Interfaces\resource{
     //intens ja instalados
     private $inst  = array();
     
-    /**
-    * Construtor da classe
-    * @uses Carregar os arquivos necessários para o funcionamento do recurso
-    * @throws DBException
-    * @return retorna um objeto com a instância do banco de dados
-    */
-   
-    private $obj = NULL;
-    public function __construct() {
-        $this->LoadResource("database" , 'db');
-        $this->dir = dirname(__FILE__);
-        $this->LoadResourceFile("creator/CreatorInterface.php");
-        $this->obj = $this->load();
-    }
-    
-    /**
+   /**
     * retorna a instância do banco de dados
     * @uses Faz a chamada do contrutor
     * @throws DBException
@@ -42,13 +27,40 @@ class creatorResource extends \classes\Interfaces\resource{
         return self::$instance;
     }
     
-    public function CreatorFromOtherSGBD($sgbd){
-        $class  = ucfirst($sgbd) ."Creator";
-        $file   = dirname(__FILE__) ."/sgbd/{$sgbd}/$class.php";
-        require_once $file;
-        //die($class);
-        return call_user_func($class ."::getInstanceOf");
+    /**
+    * Construtor da classe
+    * @uses Carregar os arquivos necessários para o funcionamento do recurso
+    * @throws DBException
+    * @return retorna um objeto com a instância do banco de dados
+    */
+   
+    private $dbcreator = NULL;
+    public function __construct() {
+        $this->LoadResource("database" , 'db');
+        $this->dir = dirname(__FILE__);
+        $this->LoadResourceFile("creator/CreatorInterface.php");
+        $this->dbcreator = $this->load();
     }
+    
+            /**
+            * @abstract Loader da classe
+            * @uses Carregar os arquivos necessários para o funcionamento do recurso
+            * @throws DBException
+            * @return retorna um objeto com a instância do banco de dados
+            */
+            public function load($db = bd_sgbd){
+                return $this->CreatorFromOtherSGBD($db);
+            }
+            
+                    public function CreatorFromOtherSGBD($sgbd){
+                        $class  = ucfirst($sgbd) ."Creator";
+                        $file   = dirname(__FILE__) ."/sgbd/{$sgbd}/$class.php";
+                        require_once $file;
+                        //die($class);
+                        return call_user_func($class ."::getInstanceOf");
+                    }
+    
+    
     
     /**
      * 
@@ -61,109 +73,173 @@ class creatorResource extends \classes\Interfaces\resource{
         $this->fks   = '';
     }
     
-   /**
-    * @abstract Loader da classe
-    * @uses Carregar os arquivos necessários para o funcionamento do recurso
-    * @throws DBException
-    * @return retorna um objeto com a instância do banco de dados
-    */
-    public function load($db = bd_sgbd){
-        return $this->CreatorFromOtherSGBD($db);
+    private $logname = "";
+    public function setLogName($logname){
+        $this->logname = $logname;
     }
-        
+    
+    private function add2Log($msg, $error = true) {
+        if($error){$this->appendErrorMessage($msg);}
+        die("$this->logname - $msg");
+        if($this->logname !== ""){\classes\Utils\Log::save($this->logname, $msg);}
+        return false;
+    }
+    
     public function install($plugin, $in_action= array(), $caninstall = 1, $canexecute = true){
-
-        static $plugins = array();
-        if(array_key_exists($plugin, $plugins)) return true;
-        $plugins[$plugin] = '';
-        
-        //se existe algum plugin sendo instalado que não seja o atual(remove dependência circular)
-        $this->inst   = $in_action;
-        $this->plugin = $plugin;
-        $this->inst[] = $plugin;
-
-        if($this->exec($plugin) === false){return false;}
-        
         $str = $fks = "";
-        foreach($this->dext as $plug){
-           $obj = new creatorResource();
-           if(!$obj->install($plug, $this->inst, 0)){
-               $this->setErrorMessage($obj->getErrorMessage());
-               return false;
-           }
-           $fks .= $obj->getFkeys();
-           $str .= $obj->getQuerys();
-       }
-
-       if(!$caninstall){
-           $this->str = $str . "". $this->str;
-           
-           //se não tem nada novo a ser instalado não criará as relações
-           if(($this->str == "") || empty ($this->str)){
-               $this->fks = "";
-               return true;
-           }
-           $this->fks = $fks . "". $this->fks;
-           return true;
-       }
-
-       $str .= $this->str;
-       $fks .= $this->fks;
-       $str = $str . $fks;
-       if(($str == "") || empty ($str)) return true;
-       if(!$canexecute) return $str;
-
-       //$this->debug($str);
-       $bool = $this->execute($str);
-       if(!empty ($this->warning)){
-           $msg = implode("<br/>", $this->warning);
-           $this->setAlertMessage($msg);
-       }
-
-       if(!$bool){
-           if($str == $fks){
-               $this->setAlertMessage("Não foi possível criar as relações de chaves estrangeiras, 
-                   mas as tabelas foram criadas com sucesso! <br/> $fks");
-           }else{
-               $this->setErrorMessage($str);
-               //$this->debug($str);
-               //$this->unstall($plugin);
-           }
-       }
-       $this->reset();
-       return $bool;
+        if($this->install_isCalled($plugin, $in_action)){return true;}
+        if($this->exec($plugin) === false){return false;}
+        if(false === $this->install_initStrings($fks, $str)){return false;}
+        if(false === $this->install_cannotInstall($caninstall, $str, $fks)){return true;}
+        if(false !== $this->install_getStr($str, $fks, $canexecute)){return $str;}
+        $bool = $this->install_execute($str);
+        return $this->install_checkErrors($bool, $str, $fks);
     }
+    
+            private function install_isCalled($plugin, $in_action){
+                static $plugins = array();
+                if(array_key_exists($plugin, $plugins)) {return true;}
+                $plugins[$plugin] = '';
+                $this->plugin     = $plugin;
+                $this->inst[]     = $plugin;
+                $this->inst       = $in_action;
+                return false;
+            }
+            
+            private function install_initStrings(&$fks, &$str){
+                foreach($this->dext as $plug){
+                   $obj = new creatorResource();
+                   if(!$obj->install($plug, $this->inst, 0)){
+                       $this->setErrorMessage($obj->getErrorMessage());
+                       return false;
+                   }
+                   $fks .= $obj->getFkeys();
+                   $str .= $obj->getQuerys();
+               }
+            }
+            
+            private function install_cannotInstall($caninstall, $str, $fks){
+                if($caninstall){return true;}
+                $this->str = $str . "". $this->str;
+
+                //se não tem nada novo a ser instalado não criará as relações
+                if(($this->str == "") || empty ($this->str)){
+                    $this->fks = "";
+                    return false;
+                }
+                $this->fks = $fks . "". $this->fks;
+                return false;
+            }
+            
+            private function install_getStr(&$str, &$fks, $canexecute){
+                $str .= $this->str;
+                $fks .= $this->fks;
+                $str = $str . $fks;
+                if(($str == "") || empty ($str)) {return true;}
+                if(!$canexecute) {return $str;}
+                return false;
+            }
+            
+            private function install_execute($str){
+                //$this->debug($str);
+                $bool = $this->execute($str);
+                if(!empty ($this->warning)){
+                    $msg = implode("<br/>", $this->warning);
+                    $this->setAlertMessage($msg);
+                }
+                return $bool;
+            }
+            
+            private function install_checkErrors($bool, $str, $fks){
+                if(!$bool){
+                    if($str == $fks){
+                        $this->setAlertMessage("Não foi possível criar as relações de chaves estrangeiras, 
+                            mas as tabelas foram criadas com sucesso! <br/> $fks");
+                    }else{
+                        $this->setErrorMessage($str);
+                        //$this->debug($str);
+                        //$this->unstall($plugin);
+                    }
+                }
+                $this->reset();
+                return $bool;
+            }
 
     public function exec($plugin){
         
         $subplugins = $this->getPlugin($plugin);
-        if($subplugins === false) return false;
+        if($subplugins === false) {return false;}
+        
         $str = "";
-
-        $this->obj->setPlugin($plugin);
+        $this->dbcreator->setPlugin($plugin);
         foreach($subplugins as $splug){
-              foreach($splug as $model){
-                  //echo "($model - ";
-                  $this->LoadModel($model, 'mobj', false);
-                  if(!is_object($this->mobj))continue;
-                  if(!method_exists($this->mobj, "getTable")) {if(DEBUG)$this->warning[] = "Model $model não possui método getTable<br/>"; continue;}
-                  if(!method_exists($this->mobj, "getDados")) {if(DEBUG)$this->warning[] = "Model $model não possui método getDados<br/>"; continue;}
-                  $tabela = $this->mobj->getTable();
-                  $dados  = $this->mobj->getDados();
-                  if($tabela == "" || $dados == "" || empty ($dados)) {if(DEBUG)$this->warning[] = "Model $model não possui dados<br/>"; continue;}
-                  //echo "$model, $tabela<br/>";
-                  //echo "$model \n";
-                  $str .=  $this->createTable($model, $tabela, $dados);
-                  //echo "$model)<br/>";
-              }
+            $this->processSubPluginDados($splug, $str);
         }
-        //$this->debug($str);
-        $action = "install";
-        $this->str = $str;
-        $this->fks = $this->genFkeys($action);
-        return true;
-
+        return $this->finalise($str);
     }
+    
+            public function getPlugin($plugin){
+               if(trim($plugin) === "") {return $this->add2Log("Selecione um plugin válido");}
+
+               $file = \classes\Classes\Registered::getPluginLocation($plugin,true);
+               if(!file_exists($file)){return $this->add2Log("plugin $plugin não existe");}
+
+               $subplugins = $this->LoadResource("files/dir", "objdir")->getPastas($file);
+               if(empty ($subplugins)){return $this->add2Log("Não existem subplugins neste plugin");}
+
+               return $this->findSubpluginsModels($subplugins, $file, $plugin);
+            }
+            
+                    private function findSubpluginsModels($subplugins, $file, $plugin){
+                        $out    = array();
+                        foreach($subplugins as $splug){
+                           $models = $this->objdir->getArquivos(\classes\Classes\Registered::getPluginLocation($plugin,true)."/$splug/classes/");
+                           foreach($models as $model){
+                              $model = str_replace("Model.php", "", $model);
+                              $class = "{$model}Model";
+                              $arq   = "$file/$splug/classes/$class.php";
+                              if(!file_exists($arq)) {continue;}
+                              $md               = ($model == $splug)? "$plugin/$splug": "$plugin/$splug/$model";
+                              $out[$splug][$md] = $md;
+                           }
+                        }
+                        return $out;
+                    }
+                    
+            private function processSubPluginDados($splug, &$str){
+                foreach($splug as $model){
+                    //echo "($model - ";
+                    $this->LoadModel($model, 'mobj', false);
+                    if(!is_object($this->mobj)){continue;}
+                    if(!method_exists($this->mobj, "getTable")) {
+                        $this->addWarning("Model $model não possui método getTable<br/>");
+                        continue;
+                    }
+                    if(!method_exists($this->mobj, "getDados")) {
+                        $this->addWarning("Model $model não possui método getDados<br/>");
+                        continue;
+                    }
+                    $tabela = $this->mobj->getTable();
+                    $dados  = $this->mobj->getDados();
+                    if($tabela == "" || $dados == "" || empty ($dados)) {
+                        $this->addWarning("Model $model não possui dados<br/>");
+                        continue;
+                    }
+                    $str .=  $this->createTable($model, $tabela, $dados);
+                }
+            }
+            
+                    private function addWarning($msg){
+                        if(DEBUG){$this->warning[] = $msg;}
+                    }
+                    
+            private function finalise($str){
+                //$this->debug($str);
+                $action = "install";
+                $this->str = $str;
+                $this->fks = $this->genFkeys($action);
+                return true;
+            }
 
     public function getFkeys(){
         return $this->fks;
@@ -177,7 +253,7 @@ class creatorResource extends \classes\Interfaces\resource{
        $subplugins = $this->getPlugin($plugin);
        if($subplugins === false) return false;
 
-       $str = $this->obj->destroyPlugin($plugin);
+       $str = $this->dbcreator->destroyPlugin($plugin);
        if($str == ""){
            $this->setErrorMessage('Classe: A string de Desinstalação do arquivo está vazia<br/> Método'.__METHOD__. " <br/>Linha: ".__LINE__ . "<br/>");
            return true;
@@ -186,107 +262,122 @@ class creatorResource extends \classes\Interfaces\resource{
     }
 
     public function update($plugin){
-       
         $this->plugin = $plugin;
         $subplugins   = $this->getPlugin($plugin);
-        $str          = $this->obj->destroyFkeys($plugin);
+        $str          = "";
         foreach($subplugins as $model => $d){
-            $modelname = "$plugin/$model";
-            $this->LoadModel($modelname, 'tmp_model', false);
-            if(!is_object($this->tmp_model)) {continue;}
-            if(!method_exists($this->tmp_model, "getDados")){continue;}
-            
-            $dados = $this->tmp_model->getDados();
-            $tabela = $this->tmp_model->getTable();
-            if($tabela === ""){
-                $this->appendAlertMessage("O model $modelname não possui uma tabela!");
-                continue;
-            }
-            
-            if(empty($dados)){
-                $this->appendAlertMessage("O model $modelname não possui dados!");
-                continue;
-            }
-            
-            foreach($dados as $name => $arr){
-                if(array_key_exists('fkey', $arr)){
-                    $this->foreign($name, $tabela, $arr, $model);
-                }
-            }
-            
-            $tmp = $this->obj->updateSubPlugin($tabela, $dados);
-            if(trim($tmp) === ""){continue;}
-            $str .= $tmp;
+            $this->processLine($str, $plugin, $model);
         }
-        
-        $bool  = true;
-        $fkeys = $this->genFkeys();
-        if(trim($str)   !== ""){$bool = $bool and $this->execute($str  , false);}
-        if(trim($fkeys) !== ""){$bool = $bool and $this->execute($fkeys, false);}
-        return $bool;
-    }
-
-    private function execute($str, $show_empty_error = true){
-       if(trim($str) == ""){
-            if($show_empty_error){
-                $this->setErrorMessage("Caro usuário, a string de criação do banco de dados está vazia. Método: ".__METHOD__);
-                return false;
-            }
-            return true;
-       }
-       $this->db->setErrorMessage("");
-       $boolean = $this->db->ExecuteInsertionQuery($str);
-       $erro = trim($this->db->getErrorMessage());
-       if($erro != ""){
-            $str .= "<h5>$erro</h5>";
-            $str .= "<p>".$this->getAlertMessage()."</p>";
-            $this->warning[] = $str;
-            $this->debug($str); //die();
-            return false;
-       }
-       //die("$str");
-       return true;
-       
+        $fkeys = $this->dbcreator->destroyFkeys($plugin, true);
+        return $this->getResult("$fkeys $str");
     }
     
-    public function getPlugin($plugin){
-       if(trim($plugin) === "") {
-           $this->setErrorMessage("Selecione um plugin válido");
-           return false;
-       }
-       
-       $file = \classes\Classes\Registered::getPluginLocation($plugin,true);
-       if(!file_exists($file)){
-           $this->setErrorMessage("plugin $plugin não existe");
-           return false;
-       }
-       
-       $this->LoadResource("files/dir", "objdir");
-       $subplugins = $this->objdir->getPastas($file);
-       if(empty ($subplugins)){
-           $this->setErrorMessage("Não existem subplugins neste plugin");
-           return false;
-       }
-       
-       $out    = array();
-       foreach($subplugins as $splug){
-          $models = $this->objdir->getArquivos(\classes\Classes\Registered::getPluginLocation($plugin,true)."/$splug/classes/");
-          
-          foreach($models as $model){
-             $model = str_replace("Model.php", "", $model);
-             $class = "{$model}Model";
-             $arq   = "$file/$splug/classes/$class.php";
-             if(!file_exists($arq)) continue;
-             $model = ($model == $splug)? "$plugin/$splug": "$plugin/$splug/$model";
-             $out[$splug][$model] = $model;
-          }
-       }
-       return $out;
+            private function processLine(&$str, $plugin, $model){
+                $modelname = "$plugin/$model";
+                $this->LoadModel($modelname, 'tmp_model', false);
+                if(!is_object($this->tmp_model)) {return false;}
+                if(!method_exists($this->tmp_model, "getDados")){return false;}
+
+                $tabela = $this->getTable($modelname);
+                if($tabela === false){return false;}
+                
+                $dados = $this->prepareDados($modelname, $tabela, $model);
+                if($dados === false){return false;}
+                
+                $tmp = $this->dbcreator->updateSubPlugin($tabela, $dados);
+                if(trim($tmp) === ""){return false;}
+                $str .= $tmp;
+                return true;
+            }
+            
+                    private function getTable($modelname){
+                        $tabela = $this->tmp_model->getTable();
+                        if($tabela === ""){
+                            $this->appendAlertMessage("O model $modelname não possui uma tabela!");
+                            return false;
+                        }
+                        return $tabela;
+                    }
+            
+                    private function prepareDados($modelname, $tabela, $model){
+                        $dados = $this->tmp_model->getDados();
+                        if(empty($dados)){
+                            $this->appendAlertMessage("O model $modelname não possui dados!");
+                            return false;
+                        }
+
+                        foreach($dados as $name => $arr){
+                            if(array_key_exists('fkey', $arr)){
+                                $this->foreign($name, $tabela, $arr, $model);
+                            }
+                        }
+                        return $dados;
+                    }
+                    
+            private function getResult($str){
+                $bool  = true;
+                $fkeys = $this->genFkeys();
+                if(trim($str)   !== ""){$bool = $bool and $this->executeSentenca($str, false);}
+                if(trim($fkeys) !== ""){$bool = $bool and $this->executeSentenca($fkeys, false);}
+                return $bool;
+            }
+    
+                    private function executeSentenca($sql){
+                        if(trim($sql) === ""){return true;}
+                        if(false !== $this->execute($sql  , false)){
+                            $this->db->printSentenca();
+                            return true;
+                        }
+                        $sentencas = explode(";", $sql);
+                        if(empty($sentencas)){return true;}
+                        return $this->individualTry($sentencas);
+                    }
+                    
+                            private function individualTry($sentencas){
+                                $tentativas = 0;
+                                $total      = count($sentencas);
+                                foreach($sentencas as $sentenca){
+                                    if(trim($sentenca) == ""){continue;}
+                                    if(false == $this->execute($sentenca, false)){
+                                        $tentativas++;
+                                        $this->add2Log("Falha ao executar a sentença $sentenca");
+                                    }
+                                }
+                                
+                                if($tentativas == 0){return true;}
+                                $msg = "Falha ao executar dados no sql! Total de sentenças: $total. Total de tentativas $tentativas";
+                                $this->add2Log($msg);
+                                return $this->appendErrorMessage($msg);
+                            }
+    private function execute($str, $show_empty_error = true){
+       if(false === $this->checkString($show_empty_error, $str)){return false;}
+       $this->db->setErrorMessage("");
+       $this->db->ExecuteInsertionQuery($str);
+       return $this->processError($str);
     }
+    
+            private function checkString($show_empty_error, $str){
+                if(trim($str) != ""){return true;}
+                if(!$show_empty_error){return true;}
+                return $this->setErrorMessage("Caro usuário, a string de criação do banco de dados está vazia. Método: ".__METHOD__);
+            }
+            
+            private function processError($str){
+                $erro = trim($this->db->getErrorMessage());
+                if($erro != ""){
+                     $str .= "<h5>$erro</h5>";
+                     $str .= "<p>".$this->getAlertMessage()."</p>";
+                     $this->warning[] = $str;
+                     $this->debug($str); 
+                     $this->add2Log($str, false);
+                     return false;
+                }
+                return true;
+            }
     
     private function createTable($model, $tabela, $dados){
         if($tabela == "") return;
-        $str = $this->obj->createTable($tabela);
+        $str = $this->dbcreator->createTable($tabela);
         foreach($dados as $name => $arr){
             if(array_key_exists('fkey', $arr)) {
                 $var = $this->foreign($name, $tabela, $arr, $model);
@@ -295,7 +386,7 @@ class creatorResource extends \classes\Interfaces\resource{
             }
             $str .= $this->addRow($tabela, $name, $arr);
         }
-        $str .= $this->obj->closeTable($tabela);
+        $str .= $this->dbcreator->closeTable($tabela);
         return $str;
     }
     
@@ -357,62 +448,67 @@ class creatorResource extends \classes\Interfaces\resource{
         $ai      = (array_key_exists("ai"     , $arr) && $arr['ai']      == true);
         $default = (array_key_exists("default", $arr)? $arr['default']:"");
         
-        return $this->obj->addRow($tabela, $name, $type, $pkey, $notnull, $ai, $keys, $size, $default, $index, $unique);
+        return $this->dbcreator->addRow($tabela, $name, $type, $pkey, $notnull, $ai, $keys, $size, $default, $index, $unique);
     }
     
     private function genFkeys(){
-        if(empty($this->fkeys)) return;
-        
+        if(empty($this->fkeys)) {return;}
         $var = "";
-        foreach($this->fkeys as $table => $fks){
-            foreach($fks as $name => $fk){
-                $model  = $fk['model'];
-                $coluna = array_shift($fk['keys']);
-                $card   = $fk['cardinalidade'];
-                $table_src  = $fk['tabela'];
-                $this->LoadModel($model, 'temp_model', false);
-                if(!is_object($this->temp_model))continue;
-                $table_dst = $this->temp_model->getTable();
-                $onupdate  = isset($fk['onupdate'])? $fk['onupdate']:"";
-                $ondelete  = isset($fk['ondelete'])? $fk['ondelete']:"";
-                if($table_src == "" || $table_dst == "" || $name == "" || $coluna == "" || $card == "")
-                    die("erro ao gerar chave estrangeira: Valores vazios");
-                $temp = $this->obj->getFkey($table_src, $table_dst, $name, $coluna, $card, $onupdate, $ondelete);
-                //$this->db->ExecuteInsertionQuery($temp);
-                $var .= $temp;
-            }
+        //foreach($this->fkeys as $table => $fks){
+        foreach($this->fkeys as $fks){
+            $this->processTableFkeys($fks, $var);
         }
         return $var;
-        
     }
+    
+            private function processTableFkeys($fks, &$var){
+                foreach($fks as $name => $fk){
+                    $model  = $fk['model'];
+                    $coluna = array_shift($fk['keys']);
+                    $card   = $fk['cardinalidade'];
+                    $table_src  = $fk['tabela'];
+                    $this->LoadModel($model, 'temp_model', false);
+                    if(!is_object($this->temp_model)){continue;}
+                    $table_dst = $this->temp_model->getTable();
+                    $onupdate  = isset($fk['onupdate'])? $fk['onupdate']:"";
+                    $ondelete  = isset($fk['ondelete'])? $fk['ondelete']:"";
+                    if($table_src == "" || $table_dst == "" || $name == "" || $coluna == "" || $card == ""){
+                        die("erro ao gerar chave estrangeira: Valores vazios");
+                    }
+                    $temp = $this->dbcreator->getFkey($table_src, $table_dst, $name, $coluna, $card, $onupdate, $ondelete);
+                    //$this->db->ExecuteInsertionQuery($temp);
+                    $var .= $temp;
+                }
+            }
     
     private function debug($str){
         $log = "";
-        //echo "<hr/>Sentença executada pelo banco de dados: <br/>".$this->db->getSentenca(). "<hr/>";
-        //echo "Debug da Sentença: <br/>";
         $var = explode(";", $str);
         array_pop($var);
         foreach($var as $v){
-            $prim  = explode("(", $v);
-            $prim  = $prim[0];
-            $ult   = explode(")", $v);
-            $ult   = end($ult);
-
-            $v     = str_replace(array("$prim(", ")$ult"), "", $v);
-            $linha = explode(", ", $v);
-            $virg = "";
-
-            $log .= "$prim (";
-            foreach($linha as $l){
-                if($l != ""){
-                    $log .= "$virg <br/>$l";
-                }
-                $virg = ",";
-            }
-            $log .= ")<br/>$ult;<br/><br/> ";
+            $this->genDebugLine($v, $log);
         }
         $log .= "<hr/>";
         \classes\Utils\Log::save('plugins/erro', $log);
-        //die();
     }
+    
+            private function genDebugLine(&$v, &$log){
+                $p     = explode("(", $v);
+                $prim  = $p[0];
+                $u     = explode(")", $v);
+                $ult   = end($u);
+
+                $v     = str_replace(array("$prim(", ")$ult"), "", $v);
+                $linha = explode(", ", $v);
+                $virg = "";
+
+                $log .= "$prim (";
+                foreach($linha as $l){
+                    if($l != ""){
+                        $log .= "$virg <br/>$l";
+                    }
+                    $virg = ",";
+                }
+                $log .= ")<br/>$ult;<br/><br/> ";
+            }
 }

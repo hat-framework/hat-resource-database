@@ -14,11 +14,8 @@ class populatorResource extends \classes\Interfaces\resource{
     */
     private static $instance = NULL;
     public static function getInstanceOf(){
-        
         $class_name = __CLASS__;
-        if (!isset(self::$instance)) {
-            self::$instance = new $class_name();
-        }
+        if (!isset(self::$instance)) {self::$instance = new $class_name();}
         return self::$instance;
     }
     
@@ -27,35 +24,33 @@ class populatorResource extends \classes\Interfaces\resource{
         $subplugins = $this->cre->getPlugin($plugin);
         $this->obj = $this->cre->load();
         $this->setaStrings();
-        if($subplugins === false) return false;
+        if($subplugins === false) {return false;}
         foreach($subplugins as $splug){
-              foreach($splug as $model){
-                  $this->LoadModel($model, 'mobj');
-                  if(!method_exists($this->mobj, "getTable")) continue;
-                  if(!method_exists($this->mobj, "getDados")) continue;
-                  $tabela = $this->mobj->getTable();
-                  $dados  = $this->mobj->getDados();
-                  if($tabela == "" || $dados == "" || empty ($dados)) continue;
-                  $this->processa($model, $tabela, $dados);
-              }
+            $this->processa($splug, $model, $tabela, $dados);
         }
-
-        die();
+        return true;
     }
     
-    private function processa($model, $tabela, $dados){
+            private function setaStrings(){
+                require_once 'string.php';
+                $str = string_getString();
+                $this->paragrafos = explode("\n", $str);
+                $this->palavras   = explode(" ", $str);
+                $this->obj->setPalavras($this->palavras);
+                $this->obj->setParagrafos($this->paragrafos);
+            }
+    
+            private function processa($splug, $model, $tabela, $dados){
+                foreach($splug as $model){
+                    $this->LoadModel($model, 'mobj');
+                    if(!method_exists($this->mobj, "getTable")) {continue;}
+                    if(!method_exists($this->mobj, "getDados")) {continue;}
+                    $tabela = $this->mobj->getTable();
+                    $dados  = $this->mobj->getDados();
+                    if($tabela == "" || $dados == "" || empty ($dados)) {continue;}
+                    $this->obj->populateRow($tabela);
+                }
+            }
 
-        $this->obj->populateRow($tabela);
-        echo "<hr/>";
-    }
-
-    private function setaStrings(){
-        require_once 'string.php';
-        $str = string_getString();
-        $this->paragrafos = explode("\n", $str);
-        $this->palavras   = explode(" ", $str);
-        $this->obj->setPalavras($this->palavras);
-        $this->obj->setParagrafos($this->paragrafos);
-    }
+    
 }
-?>

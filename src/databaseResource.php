@@ -134,4 +134,3 @@ class databaseResource extends \classes\Interfaces\resource{
         return self::$active_instance;
     }
 }
-?>
