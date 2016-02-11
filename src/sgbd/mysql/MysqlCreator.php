@@ -46,8 +46,8 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
     }
     
     public function closeTable($tabela){
-        if($tabela == "") return;
-        if(in_array($tabela, $this->instaled)) return;
+        if($tabela == "") {return;}
+        if(in_array($tabela, $this->instaled)) {return;}
         $str   = $this->getPkeys($tabela);
         $str  .= $this->getUnique($tabela);
         $extra = ($this->autoincrement)?"AUTO_INCREMENT=1":"";
@@ -57,12 +57,12 @@ class MysqlCreator extends classes\Classes\Object implements CreatorInterface {
     }
     
     private function getPkeys($tabela){
-        if($tabela == "") return;
-        if(empty ($this->pkey)) return;
+        if($tabela == "") {return;}
+        if(empty ($this->pkey)) {return;}
         $pkey = $this->pkey;
         $this->pkey = array();
         $virg = (!empty ($this->unique))? ",":"";
-        return $this->virg."PRIMARY KEY(`".implode("`, `", $pkey)."`)$virg";
+        return " PRIMARY KEY(`".implode("`, `", $pkey)."`)$virg ";
     }
     
     private function getUnique($tabela){

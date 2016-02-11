@@ -23,7 +23,7 @@ class creatorResource extends \classes\Interfaces\resource{
     */
     public static function getInstanceOf(){
         $class_name = __CLASS__;
-        if (!isset(self::$instance)) self::$instance = new $class_name;
+        if (!isset(self::$instance)) {self::$instance = new $class_name;}
         return self::$instance;
     }
     
@@ -251,7 +251,7 @@ class creatorResource extends \classes\Interfaces\resource{
 
     public function unstall($plugin){
        $subplugins = $this->getPlugin($plugin);
-       if($subplugins === false) return false;
+       if($subplugins === false) {return false;}
 
        $str = $this->dbcreator->destroyPlugin($plugin);
        if($str == ""){
@@ -263,9 +263,9 @@ class creatorResource extends \classes\Interfaces\resource{
 
     public function update($plugin){
         $this->plugin = $plugin;
-        $subplugins   = $this->getPlugin($plugin);
+        $subplugins   = array_keys($this->getPlugin($plugin));
         $str          = "";
-        foreach($subplugins as $model => $d){
+        foreach($subplugins as $model){
             $this->processLine($str, $plugin, $model);
         }
         $fkeys = $this->dbcreator->destroyFkeys($plugin, true);
@@ -325,7 +325,7 @@ class creatorResource extends \classes\Interfaces\resource{
                     private function executeSentenca($sql){
                         if(trim($sql) === ""){return true;}
                         if(false !== $this->execute($sql  , false)){
-                            $this->db->printSentenca();
+                            //$this->db->printSentenca();
                             return true;
                         }
                         $sentencas = explode(";", $sql);
@@ -376,17 +376,21 @@ class creatorResource extends \classes\Interfaces\resource{
             }
     
     private function createTable($model, $tabela, $dados){
-        if($tabela == "") return;
-        $str = $this->dbcreator->createTable($tabela);
+        if($tabela == "") {return;}
+        $str   = $this->dbcreator->createTable($tabela);
+        $lines = array();
         foreach($dados as $name => $arr){
             if(array_key_exists('fkey', $arr)) {
                 $var = $this->foreign($name, $tabela, $arr, $model);
-                if($var == "") continue;
+                if($var == "") {continue;}
                 $arr = $var;
             }
-            $str .= $this->addRow($tabela, $name, $arr);
+            $temp = $this->addRow($tabela, $name, $arr);
+            if(trim($temp) == ""){continue;}
+            $lines[] = $temp;
         }
-        $str .= $this->dbcreator->closeTable($tabela);
+        $lines[] = $this->dbcreator->closeTable($tabela);
+        $str .= implode(", ", $lines);
         return $str;
     }
     
