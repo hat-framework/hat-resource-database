@@ -80,7 +80,6 @@ class creatorResource extends \classes\Interfaces\resource{
     
     private function add2Log($msg, $error = true) {
         if($error){$this->appendErrorMessage($msg);}
-        die("$this->logname - $msg");
         if($this->logname !== ""){\classes\Utils\Log::save($this->logname, $msg);}
         return false;
     }
