@@ -94,7 +94,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
         if(!$this->execute($fetch = false)) return false;
         
         $this->setQuery("SELECT LAST_INSERT_ID() as id");
-        $this->sentenca = $query;
+		if(!$this->is_transaction){$this->sentenca = $query;}
         $exec = $this->execute();
         $exec = array_shift($exec);
         return $exec['id'];
@@ -233,12 +233,16 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
         }
     }
     
+	public function rollback(){
+		return $this->conn->rollback();
+	}
+	
     private function execute($fetch = true){
         try{
             $query = $this->getQuery();
             $this->resetQuery();
             if($this->is_transaction) {
-                return (!$this->conn->ExecuteInTransaction($query));
+                return ($this->conn->ExecuteInTransaction($query));
             }
             //echo "($query - $fetch)<br/>";
             return($this->conn->execute($query, $fetch));
@@ -273,9 +277,10 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     
     public function getFormatedSentenca(){
         return str_replace(
-            array(",","SELECT","FROM", "LEFT JOIN", "WHERE", "ORDER BY", "AND", " OR ", "IN", "LIMIT", "OFFSET"), 
-            array(",<br/>","<b>SELECT</b><br/>","<br/><b>FROM</b>", "<br/><b>LEFT JOIN</b>", "<br/><b>WHERE</b><br/>", "<br/><b>ORDER  BY</b>", "<b>AND</b><br/>", " <b>OR</b> <br/>", "<b>IN</b>", "<br/><b>LIMIT</b>", "<br/><b>OFFSET</b>"), 
-            $this->getSentenca());
+            array(/*",",*/"SELECT","FROM", "LEFT JOIN", "WHERE", "ORDER BY", "AND", " OR ", "IN", "LIMIT", "OFFSET", "UPDATE", "START TRANSACTION", "ROLLBACK", "COMMIT"), 
+            array(/*",<br/>",*/"<b>SELECT</b><br/>","<br/><b>FROM</b>", "<br/><b>LEFT JOIN</b>", "<br/><b>WHERE</b><br/>", "<br/><b>ORDER BY</b>", "<b>AND</b><br/>", " <b>OR</b> <br/>", "<b>IN</b>", "<br/><b>LIMIT</b>", "<br/><b>OFFSET</b>", "<br/><b>UPDATE</b>", "<br/><b>START TRANSACTION</b>", "<br/><b>ROLLBACK</b>", "<br/><b>COMMIT</b>"), 
+            $this->getSentenca()
+		);
     }
     
     public function getQuery(){
@@ -292,7 +297,10 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
 
     private function setQuery($query){
         $this->query .= $query . ";";
-        $this->sentenca = $this->query;
+		if($this->is_transaction){
+			$this->sentenca .= "<br>$this->query";
+		}
+		else{$this->sentenca = $this->query;}
     }
 
     
@@ -341,7 +349,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
         return (method_exists($error_obj, $function))?$error_obj->$function($msg):$error_obj->getMessage($msg);
     }
     
-    public function importDataFromArray($dados, $tabela, $callback = null, $insertIgnore = false, $callbackArgs = array()){
+    public function importDataFromArray($dados, $tabela, $callback = null, $insertIgnore = false, $callbackArgs = array(), $callbackStatementsFn = null){
         if(empty($dados)){
             \classes\Utils\Log::save('log_import_data_from_array', "dados vazios $tabela");
             $this->setAlertMessage("Dados a serem importados estão vazios");
@@ -357,8 +365,10 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
         $fn_data= $this->getData($tabela, $dados[0]);
         $keys   = array_keys($fn_data);
         $cols   = implode("`,`", $keys);
-        $update = $this->getOnUpdateStatement($keys);
-        
+		$update = "";
+		if($callbackStatementsFn !== null){$update = $callbackStatementsFn($keys);}
+		if(trim($update) == "")		      {$update = $this->getOnUpdateStatement($keys);}
+
         $cbk_data = array('dados' =>$callbackArgs, 'total' => count($keys));
         while($ttpags > $page++){
             $init   = $page*$len;
@@ -413,11 +423,11 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
                     $temp[$k] = (true === $validation['is_nullable'])?"NULL":"''";
                     continue;
                 }
-                
                 $array[$k] = str_replace(array("'"), array('"'), $array[$k]);
-                if(is_numeric($array[$k])){
+                if(is_numeric($array[$k]) || in_array($validation['tipo'], array('int'))){
                       $temp[$k] = $array[$k];
-                }else{$temp[$k] = "'{$array[$k]}'";}
+                }
+				else{$temp[$k] = "'{$array[$k]}'";}
             }
             if($count !== count($temp)){
                 die("falha catastrófica: ImportDataFromArray número incorreto de keys!($count - ".count($temp).")");

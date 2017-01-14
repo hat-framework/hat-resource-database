@@ -1,6 +1,5 @@
 <?php
 
-use classes\Classes\Object;
 class PDOConection extends classes\Classes\Object implements DBConectionInterface{
     
     private $bd_server = "", $bd_name = "", $bd_user = "", $bd_password = "";
@@ -29,17 +28,17 @@ class PDOConection extends classes\Classes\Object implements DBConectionInterfac
     
     private $pdo = NULL;
     public function connect(){
-       $charset = defined("CHARSET")?CHARSET:'utf8';
-       $charset = str_replace('-', '', $charset);
+       $chars   = defined("CHARSET")?CHARSET:'utf8';
+       $charset = str_replace('-', '', $chars);
        $dsn = 'mysql:host='.$this->bd_server.';dbname='.$this->bd_name.";charset=$charset";
        try {
-           //echo "($this->bd_user), ($this->bd_password) <br/>";
-           @$this->pdo = new PDO($dsn, $this->bd_user, $this->bd_password);
-           $this->pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-           $this->pdo->exec("set names $charset");
+			@$this->pdo = new PDO($dsn, $this->bd_user, $this->bd_password);
+			$this->pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+			$this->pdo->setAttribute(PDO::ATTR_PERSISTENT,true);
+			$this->pdo->exec("set names $charset");
        }catch (PDOException $e) {throw new \classes\Exceptions\DBException($e->getMessage());}
        
-       if(!is_object($this->pdo)) throw new \classes\Exceptions\DBException(__CLASS__ . ": Não foi possível instanciar o objeto do banco de dados!");
+	   if(!is_object($this->pdo)){throw new \classes\Exceptions\DBException(__CLASS__ . ": Não foi possível instanciar o objeto do banco de dados!");}
        return true;
     }
     
@@ -66,26 +65,24 @@ class PDOConection extends classes\Classes\Object implements DBConectionInterfac
     }
     
     public function beginTransaction(){
-        if(!is_object($this->pdo)) throw new \classes\Exceptions\DBException(__CLASS__ . ": Erro na conexão do banco de dados");
+		if(!is_object($this->pdo)) {throw new \classes\Exceptions\DBException(__CLASS__ . ": Erro na conexão do banco de dados");}
         $this->pdo->beginTransaction();
     }
     
     public function ExecuteInTransaction($query){
-        if(!is_object($this->pdo)) throw new \classes\Exceptions\DBException(__CLASS__ . ": Erro na conexão do banco de dados");
-        $this->pdo->exec($query);
-        //if($fetch) return($q->fetchAll(PDO::FETCH_ASSOC));
-        return true;
+		if(!is_object($this->pdo)) {throw new \classes\Exceptions\DBException(__CLASS__ . ": Erro na conexão do banco de dados");}
+        return $this->pdo->query($query);
         
     }
     
-    public function stopTransaction($query){
-        if(!is_object($this->pdo)) throw new \classes\Exceptions\DBException(__CLASS__ . ": Erro na conexão do banco de dados");
+    public function stopTransaction(){
+		if(!is_object($this->pdo)) {throw new \classes\Exceptions\DBException(__CLASS__ . ": Erro na conexão do banco de dados");}
         //$this->pdo->exec($query);
         $this->pdo->commit();
     }
     
     public function rollback(){
-        if(!is_object($this->pdo)) throw new \classes\Exceptions\DBException(__CLASS__ . ": Erro na conexão do banco de dados");
+		if(!is_object($this->pdo)) {throw new \classes\Exceptions\DBException(__CLASS__ . ": Erro na conexão do banco de dados");}
         return $this->pdo->rollBack();
     }
 }

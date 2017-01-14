@@ -10,9 +10,7 @@ interface DBConectionInterface{
     
     public function beginTransaction();
     
-    public function stopTransaction($query);
+    public function stopTransaction();
     
     public function rollback();
 }
-
-?>
