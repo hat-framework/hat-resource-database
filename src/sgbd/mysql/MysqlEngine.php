@@ -12,7 +12,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     private $join;
     
     //guarda a query que ainda será execultada
-    private $query;
+    private $query = array();
     
     //guarda a ultima sentença sql execultada
     private $sentenca;
@@ -91,7 +91,7 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
 
         $query = " INSERT INTO ".$this->bd_name .".". $table. "(".$campos.")"." VALUES(".$valores."); ";
         $this->setQuery($query);
-        if(!$this->execute($fetch = false)) return false;
+		if(!$this->execute($fetch = false)) {return false;}
         
         $this->setQuery("SELECT LAST_INSERT_ID() as id");
 		if(!$this->is_transaction){$this->sentenca = $query;}
@@ -239,12 +239,12 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
 	
     private function execute($fetch = true){
         try{
-            $query = $this->getQuery();
+            $query = $this->getQuery($fetch);
             $this->resetQuery();
-            if($this->is_transaction) {
+            if($this->is_transaction && $fetch == false) {
                 return ($this->conn->ExecuteInTransaction($query));
             }
-            //echo "($query - $fetch)<br/>";
+//            echo "($query - $fetch)<br/>\n\n";
             return($this->conn->execute($query, $fetch));
         }
 
@@ -283,12 +283,17 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
 		);
     }
     
-    public function getQuery(){
-        return $this->query;
+    public function getQuery($fetch = false){
+		if($fetch === true){
+			$out = $this->query[count($this->query) -1];
+			unset($this->query[count($this->query) -1]);
+			return $out;
+		}
+        return implode(";", $this->query) . ";";
     }
     
     public function resetQuery(){
-        $this->query = "";
+        $this->query = array();
     }
 
     public function showTables(){
@@ -296,11 +301,11 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     }
 
     private function setQuery($query){
-        $this->query .= $query . ";";
+        $this->query[] = $query;
 		if($this->is_transaction){
-			$this->sentenca .= "<br>$this->query";
+			$this->sentenca .= (trim($this->sentenca) == "")?implode(";", $this->query) . ";":implode(";", $this->query) . "; <br/>\n";
 		}
-		else{$this->sentenca = $this->query;}
+		else{$this->sentenca = implode(";", $this->query) . ";";}
     }
 
     
