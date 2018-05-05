@@ -264,9 +264,11 @@ class MysqlEngine extends \classes\Interfaces\resource implements DatabaseInterf
     }
 
     public function getFormatedSentenca() {
-        return str_replace(
-                array(/* ",", */"SELECT", "FROM", "LEFT JOIN", "WHERE", "ORDER BY", "AND", " OR ", "IN", "LIMIT", "OFFSET", "UPDATE", "START TRANSACTION", "ROLLBACK", "COMMIT"), array(/* ",<br/>", */"<b>SELECT</b><br/>", "<br/><b>FROM</b>", "<br/><b>LEFT JOIN</b>", "<br/><b>WHERE</b><br/>", "<br/><b>ORDER BY</b>", "<b>AND</b><br/>", " <b>OR</b> <br/>", "<b>IN</b>", "<br/><b>LIMIT</b>", "<br/><b>OFFSET</b>", "<br/><b>UPDATE</b>", "<br/><b>START TRANSACTION</b>", "<br/><b>ROLLBACK</b>", "<br/><b>COMMIT</b>"), $this->getSentenca()
-        );
+      return str_replace(
+        array("SELECT", "FROM", "LEFT JOIN", "WHERE", "ORDER BY", "AND", " OR ", "LIMIT", "OFFSET", "UPDATE", "START TRANSACTION", "ROLLBACK", "COMMIT", "NOT IN (", "ON (", "IN", "GROUP BY",),
+        array("<b>SELECT</b><br/>", "<br/><b>FROM</b>", "<br/><b>LEFT JOIN</b>", "<br/><b>WHERE</b><br/>", "<br/><b>ORDER BY</b>", "<b>AND</b><br/>", " <b>OR</b> <br/>", "<br/><b>LIMIT</b>", "<br/><b>OFFSET</b>", "<br/><b>UPDATE</b>", "<br/><b>START TRANSACTION</b>", "<br/><b>ROLLBACK</b>", "<br/><b>COMMIT</b>", "<b>NOT IN (</b> &#9;", "<b>ON (</b> &#9;", "<b>IN</b>", "<br><b>GROUP BY</b>"), 
+        $this->getSentenca()
+      );
     }
 
     public function getQuery($fetch = false) {
